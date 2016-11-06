@@ -270,7 +270,7 @@ public class TelaInicial extends javax.swing.JFrame {
                      e.printStackTrace();  
                 }
                 
-                vd = new ViewDocument(docIDs.get(index), this, searcher.getProperties(), retrieveContainer.getModel().getElementAt(index).toString()); 
+                vd = new ViewDocument(docIDs.get(index), this, searcher, retrieveContainer.getModel().getElementAt(index).toString()); 
                 vd.setVisible(true);
                 this.setVisible(false); 
                 System.out.println("index: "+index);
@@ -324,7 +324,10 @@ public class TelaInicial extends javax.swing.JFrame {
             args[0] = "wt10g.properties";
         }
         try {
+            long start = System.currentTimeMillis();
             searcher = new WTDocRetriever(args[0]);
+            long end = System.currentTimeMillis();
+            System.out.println("Tempo de Geração do Mapeamento de Links = "+(end-start)+" milissegundos");
                         
         }
         catch (Exception ex) {

@@ -8,20 +8,18 @@ package feedback;
 import java.util.Comparator;
 
 /**
- *
+ * 
  * @author Herbert
  */
 class DocTimeVis implements Comparable{
     
-    String doc;
-    int time;
+    String doc; // id do documento no indice
+    int time;   // tempo de visualização
 
     public DocTimeVis(String document, int time) {
         this.doc = document;
         this.time = time;
-    }
-
-    
+    }    
 
     @Override
     public int compareTo(Object o) {
@@ -34,6 +32,5 @@ class DocTimeVis implements Comparable{
         } else {
             return -1;
         }
-    }
-    
+    }    
 }

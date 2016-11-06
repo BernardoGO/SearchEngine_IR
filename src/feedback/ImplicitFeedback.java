@@ -33,19 +33,18 @@ public class ImplicitFeedback {
     Properties prop;
     ArrayList<LogInstance> log;
 
-    public ImplicitFeedback(String terms, IndexReader reader, Properties prop) {
-        
+    public ImplicitFeedback(String terms, IndexReader reader, Properties prop) {        
         this.terms = terms;
         this.reader = reader;
         this.prop = prop;
         log = new ArrayList<LogInstance>();
         
-        loadLog();
-        
-        
-        
+        loadLog();               
     }
-
+    
+    /**
+     * Carrega o arquivo de log de consultas
+     */
     public void loadLog() {
         
         FileReader fr = null;
@@ -73,7 +72,13 @@ public class ImplicitFeedback {
             }
         }
     }
-
+    
+    /**
+     * Adiciona termos dos k top documentos para a consulta informada
+     * @param k quantidade de documentos a extrair termos
+     * @return nova consulta
+     * @throws IOException 
+     */
     public String apply(int k) throws IOException {
         System.out.println("Consulta Original -> "+terms);
         

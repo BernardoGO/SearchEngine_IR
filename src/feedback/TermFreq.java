@@ -12,7 +12,8 @@ package feedback;
 class TermFreq implements Comparable{
     public String term;
     int frequency;
-
+    
+    
     public TermFreq(String termString, int termFrequency) {
         this.term = termString;
         this.frequency = termFrequency;
