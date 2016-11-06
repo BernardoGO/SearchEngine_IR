@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/telas/TelaInicial.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/trec/Java2sAutoTextField.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/trec/Nueva.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/trec/Java2sAutoComboBox.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/retriever/TrecDocRetriever.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/indexing/WTDocIndexer.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/feedback/LogInstance.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/feedback/ImplicitFeedback.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/telas/ViewDocument.java</file>
+            <file>file:/home/bernardo/projects/herbert/SearchEngine/src/retriever/WTDocRetriever.java</file>
+        </group>
+    </open-files>
+</project-private>

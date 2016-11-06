@@ -1,0 +1,2 @@
+retriever.NNQueryWord
+retriever.NNQueryExpander

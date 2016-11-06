@@ -1,0 +1,5 @@
+corpus/
+index/
+wt10g/
+*.tar.xz
+dist/

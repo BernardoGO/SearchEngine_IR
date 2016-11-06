@@ -1,0 +1,6 @@
+evaluator.Evaluator
+evaluator.PerQueryRelDocs
+evaluator.ResultTuple
+evaluator.RetrievedResults
+evaluator.AllRetrievedResults
+evaluator.AllRelRcds
