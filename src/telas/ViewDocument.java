@@ -5,6 +5,7 @@
  */
 package telas;
 
+import indexing.TrecDocIndexer;
 import java.awt.Container;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -14,6 +15,8 @@ import java.util.Properties;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
+import retriever.TrecDocRetriever;
+import retriever.WTDocRetriever;
 
 /**
  *
@@ -25,51 +28,14 @@ public class ViewDocument extends javax.swing.JFrame {
     /**
      * Creates new form ViewDocument
      */
-    public ViewDocument(String docID, TelaInicial jf,Properties properties, String url) throws FileNotFoundException, IOException {
-        
-        //TENTATIVA DE MOSTRAR A PAGINA NO JFRAME FICA PRA 5ª PARTE
-        /*
-        String[] path = docID.split("-");
-        String coll = properties.getProperty("coll")+path[0]+"/"+path[1]+".txt";
-        FileReader fr = new FileReader(coll);
-        BufferedReader br = new BufferedReader(fr);
-        
-        int doc = Integer.parseInt(path[2]);
-        for(int i=1; i<doc; i++){
-            String linha = br.readLine().trim();
-            while(linha.compareTo("</DOC>")!=0){
-                linha = br.readLine().trim();
-            }
-        }       
-        System.out.println(url);
-        JFrame frame = new JFrame();
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        Container con = frame.getContentPane();
-        JEditorPane jep = new JEditorPane();
-        JScrollPane jsp = new JScrollPane(jep);
-        con.add(jsp);
-        jep.setContentType("text/html");
-        try{
-          jep.setPage(url);
-        }
-        catch (Exception e){
-          e.printStackTrace();
-        }
-        frame.setBounds(50, 50, 600, 800);
-        frame.setVisible(true);
-        */     
-        
-        
-        
-        
+    public ViewDocument(String docID, TelaInicial jf, TrecDocRetriever s, String url) throws FileNotFoundException, IOException {
+                
         initComponents();
-        docArea.append(docID);
+        docArea.append("Visualizando Documento "+s.getReader().document(Integer.parseInt(docID)).get(TrecDocIndexer.FIELD_ID)+"\n");
         previous = jf;
         
     }
-
-    
-
+  
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always

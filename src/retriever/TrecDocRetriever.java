@@ -49,11 +49,17 @@ public class TrecDocRetriever {
     FileWriter fw;
     FileReader docs = new FileReader("docs.ids");
     BufferedReader readerDocs = new BufferedReader(docs);
-    int numDocs = 1692096;
+    public static final int numDocs = 1692096;
     String [][] map = new String[numDocs][3];
     
     ArrayList<String[]> links = new ArrayList<String[]>();
+    public ArrayList<Double> pageRank = new ArrayList<Double>();
     
+    /**
+     * Construtor
+     * @param propFile
+     * @throws Exception 
+     */
     public TrecDocRetriever(String propFile) throws Exception {
         indexer = new TrecDocIndexer(propFile);
         prop = indexer.getProperties();
@@ -62,6 +68,7 @@ public class TrecDocRetriever {
             File indexDir = indexer.getIndexDir();
             System.out.println("Running queries against index: " + indexDir.getPath());
             
+            // Carrega arquivos para mapa de url
             String mappingURLFile = "wt10g/info/docid_to_url";
             FileReader fr = new FileReader(mappingURLFile);
             BufferedReader br = new BufferedReader(fr);
@@ -71,17 +78,25 @@ public class TrecDocRetriever {
             }
             makeMap(br);
             
-            //fw = new FileWriter("docs.ids");
-            
+            // Abre o indice            
             reader = DirectoryReader.open(FSDirectory.open(indexDir));
             searcher = new IndexSearcher(reader);
             
+            // Ajusta a maquina para BM25
             float lambda = Float.parseFloat(""+0.4);
             searcher.setSimilarity(new BM25Similarity());
             
             numWanted = 150;
             runName = "zettair";
             
+            // Carrega valores de pagerank
+            FileReader frPR = new FileReader("pagerank/pagerank.score");
+            BufferedReader brPR = new BufferedReader(frPR);
+            String line = brPR.readLine();
+            while(line!=null){
+                pageRank.add(Double.parseDouble(line));                
+                line = brPR.readLine();                
+            }
             
         }
         catch (Exception ex) {
@@ -99,19 +114,7 @@ public class TrecDocRetriever {
         return parser.getQueries();
     }    
     
-    public void makeMap(BufferedReader br) throws IOException{
-        
-        /*while(linha != null){
-            int indice = hash(linha[0]);
-            System.out.println(indice);
-            if(map[indice][0].compareTo("")==0){
-                map[indice][0] = linha[0];
-                map[indice][1] = linha[1];  
-            } else {
-                mapColisionArea.add(linha);
-            }
-            linha = br.readLine().split(" ");
-        }*/
+    public void makeMap(BufferedReader br) throws IOException{   
         
         for (int i=0; i<map.length; i++){
             String [] linha = br.readLine().split(" ");
@@ -120,54 +123,57 @@ public class TrecDocRetriever {
         }
     }
     
-    public int hash(String term){
-        int resp = 1;
-        
-        for(int i=0; i<term.length(); i++){
-            int t = term.charAt(i)%5;
-            
-            //System.out.println((int)term.charAt(i));            
-            if(t!=0){
-                resp *= t;
-            } 
-        }
-        
-        return resp % numDocs;
-    }
-    
+    /**
+     * Pesquisa documentos que contenham a consulta dada
+     * @param terms consulta
+     * @return lista de documentos
+     * @throws Exception 
+     */   
     public ArrayList<String[]> retrieve(String terms) throws Exception{
         
-        String resultsFile = "Resp/naotrec.res";   
-        
+        // abre arquivo de resultados
+        String resultsFile = "Resp/naotrec.res";           
         FileWriter fw = new FileWriter(resultsFile);
                 
         TopScoreDocCollector collector;
         TopDocs topDocs;
         
-        String expanded = applyImplicitFeedback(terms);
-        
+        // expande a consulta
+        String expanded = applyImplicitFeedback(terms);        
         StandardQueryParser queryParser = new StandardQueryParser(indexer.getAnalyzer());
-        Query luceneQuery = queryParser.parse(expanded, TrecDocIndexer.FIELD_ANALYZED_CONTENT);
+        Query luceneQuery = queryParser.parse(expanded, TrecDocIndexer.FIELD_ANALYZED_CONTENT);    
         
-        
-        
+        // busca no indice
         collector = TopScoreDocCollector.create(numWanted, true);
         searcher.search(luceneQuery, collector);
         topDocs = collector.topDocs();
         
+        // adiciona pagerank
+        topDocs = applyPageRank(topDocs);
+        
+        // salva no arquivo de resposta
         saveRetrievedTuples(fw, topDocs);
         
         fw.close();
-        return links;
-             
+        
+        return links;             
     }
     
-    private String applyImplicitFeedback(String terms) throws IOException {
-        
+    /**
+     * Realiza expansão da consulta
+     * @param terms consulta a expandir
+     * @return consulta expandida
+     * @throws IOException 
+     */
+    private String applyImplicitFeedback(String terms) throws IOException {        
         ImplicitFeedback expansor = new ImplicitFeedback(terms, reader, prop);
         return expansor.apply(3);
     }
     
+    /**
+     * Realiza consulta do arquivo de queries do WT10g
+     * @throws Exception 
+     */
     public void retrieveAll() throws Exception {
         TopScoreDocCollector collector;
         TopDocs topDocs;
@@ -175,8 +181,7 @@ public class TrecDocRetriever {
         FileWriter fw = new FileWriter(resultsFile);
         
         List<TRECQuery> queries = constructQueries();   
-
-        //***********************************************************************************************
+        
         BM25Similarity sim = new BM25Similarity();
         searcher.setSimilarity(sim);
         int k = 5; // top 5
@@ -189,25 +194,21 @@ public class TrecDocRetriever {
             collector = TopScoreDocCollector.create(numWanted, true);
             searcher.search(query.getLuceneQueryObj(), collector);
             topDocs = collector.topDocs();
-            System.out.println("Retrieved results for query " + query.id);
-            
-            
-            // Cria o arquivo de TermVectors
-            //createTermVectorsFile();
+            System.out.println("Retrieved results for query " + query.id);            
 
             // Apply feedback            
-            topDocs = applyFeedback2 (query, topDocs, k);            
+            topDocs = applyFeedback2 (query, topDocs, k); 
+            
+            // Apply PageRank
+            topDocs = applyPageRank(topDocs);
             
             // Save results
             saveRetrievedTuples(fw, query, topDocs);
         }
-        //**********************************************************************************************
-              
-        //this.fw.close();
-        fw.close();        
-        reader.close();
         
-        // Evaluate
+        fw.close();        
+        reader.close();        
+        
         evaluate();
         
     }
@@ -241,21 +242,10 @@ public class TrecDocRetriever {
         for (int i = 0; i < hits.length; ++i) {
             int docId = hits[i].doc;
             Document d = searcher.doc(docId);
-          /* Tentativa com Hash  
-           int indice = hash(d.get(TrecDocIndexer.FIELD_ID));
-           if(map[indice][0].compareTo(d.get(TrecDocIndexer.FIELD_ID))==0){
-               links.add(map[indice][1]);
-           } else {
-               for(int j=0; j<links.size(); j++){                                 
-                   if(mapColisionArea.get(j)[0].compareTo(d.get(TrecDocIndexer.FIELD_ID))==0){
-                       links.add(mapColisionArea.get(j)[1]);
-                       break;
-                   }
-               }
-           }*/
-            
+                      
             // Tentativa com busca binaria ***FICOU MUITO MELHOR****
             int index = binarySearch(d.get(TrecDocIndexer.FIELD_ID), 0, map.length-1);
+            
             map[index][2] = ""+docId;
             links.add(map[index]);
             
@@ -310,16 +300,13 @@ public class TrecDocRetriever {
         while (tokens[0].compareTo(query.id.trim())==0 || !foundQuery){
             
             foundQuery = tokens[0].compareTo(query.id.trim())==0;
-            //System.out.println("-->"+foundQuery+" "+tokens[2]);
-            
-            if(foundQuery){
-                
+                        
+            if(foundQuery){                
                 
                 int relevance = Integer.parseInt(tokens[3]);
                                 
                 if(relevance > 0){
-                   /* boolean foundDoc = false;
-                    
+                   /** boolean foundDoc = false;                    
                     // Primeira Vez - Montagem do arquivo de ids
                     for(int i=0; i<reader.numDocs() && !foundDoc; i++){
                         if(tokens[2].compareTo(reader.document(i).get(TrecDocIndexer.FIELD_ID)) == 0){
@@ -327,38 +314,28 @@ public class TrecDocRetriever {
                             Terms terms = reader.getTermVector(i, TrecDocIndexer.FIELD_ANALYZED_CONTENT);
                             buff.append(" ").append(terms.getMax().utf8ToString()); //adicionando o termo mais frequente na query
                             this.fw.write(i+"\n");
-                            this.fw.flush();
-                            
+                            this.fw.flush();                            
                         }                        
                     }
                     */
+                    
                     // Demais vezes - doc.ids pronto
                     int doc = Integer.parseInt(readerDocs.readLine());
                     if(count < 5){
                         Terms terms = reader.getTermVector(doc, TrecDocIndexer.FIELD_ANALYZED_CONTENT);
-                        //buff.append(" ").append(terms.getMin().utf8ToString()); //adicionando o termo mais frequente na query
                         
-                        //*********************************************************************************************************
                         // access the terms for this field
                         TermsEnum termsEnum = terms.iterator(null); 
                         BytesRef term = null;
                            int termCount = 0;
                         // explore the terms for this field
                         while ((term = termsEnum.next()) != null) {
-                            if(Math.random() < 0.03){
+                            if(Math.random() < 0.02){
                                 buff.append(" ").append(term.utf8ToString()); 
                                 termCount++;
                             }
-                        }
-                        //************************************************************************************************************
-                        
-                        /*
-                        if(topDocs.totalHits > count){                            
-                            terms = reader.getTermVector(topDocs.scoreDocs[count].doc, TrecDocIndexer.FIELD_ANALYZED_CONTENT);
-                            buff.append(" ").append(terms.getMax().utf8ToString()); //adicionando o termo mais frequente na query
-                        }*/
-                        count++;
-                        //buff.append(" ").append(query.title);                          
+                        }         
+                        count++;            
                     }
                 }                
             } 
@@ -368,35 +345,14 @@ public class TrecDocRetriever {
                 tokens = line.split(" ");
             }else tokens[0] = "FIM";
             
-        }
-        //buff.append(" ").append(query.title);
-        
-       /* for(int i=0; i<k; i++){
-            if(topDocs.totalHits > i){
-                Terms terms = reader.getTermVector(topDocs.scoreDocs[i].doc, "words");
-                buff.append(" ").append(terms.getMax().utf8ToString()); //adicionando o termo mais frequente na query
-                if (terms != null && terms.size() > 0) {
-                    // access the terms for this field
-                    TermsEnum termsEnum = terms.iterator(null); 
-                    BytesRef term = null;
-                       int count = 0;
-                    // explore the terms for this field
-                    while ((term = termsEnum.next()) != null && count <= 5) {
-                        buff.append(" ").append(term.utf8ToString()); 
-                        count++;
-                    }
-                }
-            }
-        }*/
+        }     
         
         query.title += buff.toString();
-        System.out.println("Expandindo a Consulta com: "+buff.toString());
-        //System.out.println("-------------->"+reader.document(500).get("id"));
+        System.out.println("Expandindo a Consulta com: "+buff.toString());        
         StandardQueryParser parser = new StandardQueryParser();
         
         query.luceneQuery = parser.parse(query.title, TrecDocIndexer.FIELD_ANALYZED_CONTENT);
-        //query.luceneQuery = searcher.rewrite(query.getLuceneQueryObj());        
-        
+             
         TopScoreDocCollector collector;
         TopDocs topDocs2;
         collector = TopScoreDocCollector.create(numWanted, true);  
@@ -425,5 +381,35 @@ public class TrecDocRetriever {
         fw.close();
     }
 
-   
+    private TopDocs applyPageRank(TopDocs topDocs) {   
+           
+        for(int i=0; i<topDocs.scoreDocs.length; i++){      
+            double bm25 = (topDocs.scoreDocs[i].score * 0.8);
+            double PR = (pageRank.get(topDocs.scoreDocs[i].doc) * 0.2);
+            topDocs.scoreDocs[i].score = (float) (bm25 + PR) ;
+        }  
+        
+        ArrayList<ScoreDoc> hits = new ArrayList<ScoreDoc>();
+        if(topDocs.scoreDocs.length > 0)
+            hits.add(topDocs.scoreDocs[0]);
+        
+        for(int i=1 ;i <topDocs.scoreDocs.length; i++){
+            ScoreDoc sd = topDocs.scoreDocs[i];
+            int index = 0;
+            while(sd.score < hits.get(index).score){
+                index++;
+                if(index == hits.size()){
+                    break;
+                }
+            }
+            hits.add(index, sd);
+        }
+        ScoreDoc[] hits2 = new ScoreDoc[hits.size()];
+        for(int i=0; i<hits.size(); i++){
+            hits2[i] = hits.get(i);
+        }
+        topDocs.scoreDocs = hits2;
+            
+        return topDocs;     
+    }
 }
