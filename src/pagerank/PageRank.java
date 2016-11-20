@@ -19,8 +19,9 @@ import java.util.logging.Logger;
  * @author Herbert
  */
 public class PageRank {
-    static final int ITERATIONS = 2;        // Iterações
+    static final int ITERATIONS = 7;       // Iterações
     static final double d = 0.85;           // fator de amortecimento
+    static final double MAX_SCORE = 50.0;   // pontuação maximo
     
     static ArrayList<DocumentEdges> docs = new ArrayList<DocumentEdges>();
     static ArrayList<Double> scores = new ArrayList<Double>();
@@ -77,7 +78,7 @@ public class PageRank {
         
         if(it == 0){            
             for(int x=0; x<N; x++){
-                scores.add(1.0/(double)N);
+                scores.add(sigmoid(1.0/(double)N));
             }            
         } else{
             ArrayList<Double> copy = (ArrayList<Double>) scores.clone(); 
@@ -98,7 +99,7 @@ public class PageRank {
                     part2A = previousPageRank / nOutLinks;
                     part2 += part2A;                   
                 }
-                scores.set(x, part1 + (d * part2));
+                scores.set(x, sigmoid(part1 + (d * part2)));
                 part2 = 0.0;
             }            
         }
@@ -108,10 +109,27 @@ public class PageRank {
         }
     }
 
-    private static void saveScores(FileWriter fw) throws IOException {      
+    private static void saveScores(FileWriter fw) throws IOException {   
+        
+        //normalize();
+        
         for(int i=0; i<scores.size(); i++){
             fw.write(scores.get(i)+"\n");
         }        
+    }
+
+    private static void normalize() {
+        for(int i=0; i<scores.size(); i++){
+            //System.out.print(scores.get(i)+" -> ");
+            scores.set(i, sigmoid(scores.get(i)));
+            //System.out.println(scores.get(i));
+        }  
+    }
+
+    private static double sigmoid(double value) {
+        //System.out.println(value);
+        double e = 2.718281828;
+        return MAX_SCORE/(1.0 + Math.pow(1.0/e, value)) - MAX_SCORE/2.0;
     }
     
 }

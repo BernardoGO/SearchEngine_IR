@@ -63,7 +63,7 @@ class Links{
         if(comp > 0){
             return getNumber(id, list, init, pos-1);
         } else if(comp == 0){
-            return pos;
+            return list.get(pos).getDocumentID();
         } else {
             return getNumber(id, list, pos+1, end);
         }

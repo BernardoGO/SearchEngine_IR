@@ -12,7 +12,7 @@ import java.util.Comparator;
  *
  * @author Herbert
  */
-class DocumentEdges implements Comparable{
+public class DocumentEdges implements Comparable{
     
     private String document;                // Nome do documento
     private int documentID;                 // ID do Documento
