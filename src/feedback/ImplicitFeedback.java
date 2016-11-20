@@ -103,13 +103,20 @@ public class ImplicitFeedback {
                 
                 term = termsEnum.next();
                 if(term != null){
-                    termBuff.append(term.utf8ToString()); 
-                    freqBuff.append(termsEnum.totalTermFreq());
+                    if(!term.utf8ToString().matches(".*\\d+.*")){
+                        termBuff.append(term.utf8ToString()); 
+                        freqBuff.append(termsEnum.totalTermFreq());
+                    }
                 }
                 
-                while (term != null) {                    
-                    termBuff.append(" ").append(term.utf8ToString()); 
-                    freqBuff.append(" ").append(termsEnum.totalTermFreq());
+                while (term != null) { 
+                   // System.out.println(term.utf8ToString());
+                   // System.out.println(termsEnum.totalTermFreq());
+                    if(!term.utf8ToString().matches(".*\\d+.*") && term.utf8ToString().compareTo("addd:hh:mm:ssqcl")!=0){
+                        
+                        termBuff.append(" ").append(term.utf8ToString()); 
+                        freqBuff.append(" ").append(termsEnum.totalTermFreq());
+                       } 
                         //System.out.println(freqBuff); 
                     term = termsEnum.next();
                 }
@@ -118,11 +125,15 @@ public class ImplicitFeedback {
                 int[] termFrequency = new int[tf.length];
                 List<TermFreq> result = new ArrayList<TermFreq>(tf.length);
                 for(int x=0; x< tf.length; x++){
-                    termFrequency[x] = Integer.parseInt(tf[x]);
+                    if(tf[x].matches(".*\\d+.*")){
+                        termFrequency[x] = Integer.parseInt(tf[x]);
+                    } else termFrequency[x] = 0;
                     result.add(new TermFreq(termStrings[x], termFrequency[x]));
                 }
                 Collections.sort(result);
-                result = result.subList(0, 4);
+                if(result.size() > 15){
+                    result = result.subList(0, 15);
+                } 
                 for(int m=0; m<result.size(); m++){
                     this.terms += " "+result.get(m).term;
                 }   

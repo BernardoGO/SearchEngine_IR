@@ -29,6 +29,7 @@ import org.apache.lucene.util.BytesRef;
 import trec.*;
 import wvec.WordVecs;
 import feedback.ImplicitFeedback;
+import pagerank.DocumentEdges;
 
 /**
  *
@@ -51,6 +52,7 @@ public class TrecDocRetriever {
     BufferedReader readerDocs = new BufferedReader(docs);
     public static final int numDocs = 1692096;
     String [][] map = new String[numDocs][3];
+    ArrayList<DocumentEdges> idToPos = new ArrayList<>();
     
     ArrayList<String[]> links = new ArrayList<String[]>();
     public ArrayList<Double> pageRank = new ArrayList<Double>();
@@ -78,9 +80,11 @@ public class TrecDocRetriever {
             }
             makeMap(br);
             
+            
             // Abre o indice            
             reader = DirectoryReader.open(FSDirectory.open(indexDir));
             searcher = new IndexSearcher(reader);
+            makeIdToPos();
             
             // Ajusta a maquina para BM25
             float lambda = Float.parseFloat(""+0.4);
@@ -194,13 +198,46 @@ public class TrecDocRetriever {
             collector = TopScoreDocCollector.create(numWanted, true);
             searcher.search(query.getLuceneQueryObj(), collector);
             topDocs = collector.topDocs();
-            System.out.println("Retrieved results for query " + query.id);            
+            System.out.println("Retrieved results for query " + query.id); 
+            
+            ArrayList<String> relDocs = getRelevantDocs(query);
+            StringBuffer docsBuffer = new StringBuffer();
+            StringBuffer timesBuffer = new StringBuffer();
+            
+            for(int i=0; i<relDocs.size(); i++){
+                //System.out.println(relDocs.get(i));
+                int doc = binarySearch2(relDocs.get(i), 0, idToPos.size()-1);
+                Document d = reader.document(doc);
+                //System.out.println(doc+" "+d.get(TrecDocIndexer.FIELD_ID));
+                docsBuffer.append(doc+"\t");
+                timesBuffer.append(1000+"\t");
+            }        
+            
+            ArrayList<String> documents = new ArrayList<String>();
+            documents.add(docsBuffer.toString());
+            ArrayList<String> times = new ArrayList<String>();
+            times.add(timesBuffer.toString());
+            ArrayList<String> q = new ArrayList<String>();
+            q.add(query.title);            
+            
+            saveLog(q, documents, times);
+            
+            // expande a consulta
+            String expanded = applyImplicitFeedback(query.title);        
+            StandardQueryParser queryParser = new StandardQueryParser(indexer.getAnalyzer());
+            Query luceneQuery = queryParser.parse(expanded, TrecDocIndexer.FIELD_ANALYZED_CONTENT);   
+            //System.out.println("-->"+luceneQuery);
+        
+            // busca no indice
+            collector = TopScoreDocCollector.create(numWanted, true);
+            searcher.search(luceneQuery, collector);
+            topDocs = collector.topDocs();
 
             // Apply feedback            
-            topDocs = applyFeedback2 (query, topDocs, k); 
+            // topDocs = applyFeedback2 (query, topDocs, k); 
             
             // Apply PageRank
-            topDocs = applyPageRank(topDocs);
+            // topDocs = applyPageRank(topDocs);
             
             // Save results
             saveRetrievedTuples(fw, query, topDocs);
@@ -268,6 +305,21 @@ public class TrecDocRetriever {
             return pos;
         } else {
             return binarySearch(id, pos+1, end);
+        }
+    }
+    
+    private int binarySearch2(String id, int init, int end) throws IOException {
+        
+        int pos = (end + init)/2;
+        int comp = idToPos.get(pos).getDocument().compareTo(id);
+        //System.out.println(idToPos.get(pos).getDocument()+" "+id+" "+pos);
+        if(comp > 0){
+            return binarySearch2(id, init, pos-1);
+        } else if(comp == 0){
+            //System.out.println(idToPos.get(pos).getDocument()+" - "+reader.document(pos).get(TrecDocIndexer.FIELD_ID)+" - "+idToPos.get(pos).getDocumentID()+ " - "+reader.document(idToPos.get(pos).getDocumentID()).get(TrecDocIndexer.FIELD_ID));
+            return idToPos.get(pos).getDocumentID();
+        } else {
+            return binarySearch2(id, pos+1, end);
         }
     }
     
@@ -345,7 +397,7 @@ public class TrecDocRetriever {
                 tokens = line.split(" ");
             }else tokens[0] = "FIM";
             
-        }     
+        }       
         
         query.title += buff.toString();
         System.out.println("Expandindo a Consulta com: "+buff.toString());        
@@ -361,6 +413,47 @@ public class TrecDocRetriever {
         topDocs2 = collector.topDocs();
         
         return topDocs2;
+    }
+    
+    public ArrayList<String> getRelevantDocs(TRECQuery query) throws IOException, QueryNodeException {
+        
+        ArrayList<String> out = new ArrayList<>();    
+        StringBuffer buff = new StringBuffer();
+        FileReader fr = new FileReader("wt10g/topics/qrels.trec9.main_web");
+        
+        BufferedReader br = new BufferedReader(fr);
+        
+        String line = br.readLine();
+        String[] tokens = line.split(" ");
+        boolean foundQuery = false;
+        int count = 0;
+        
+        while (tokens[0].compareTo(query.id.trim())==0 || !foundQuery){
+            
+            if(count > 2){
+                return out;                
+            }
+            
+            foundQuery = tokens[0].compareTo(query.id.trim())==0;
+                        
+            if(foundQuery){                
+                
+                int relevance = Integer.parseInt(tokens[3]);
+                                
+                if(relevance > 0){                  
+                    out.add(tokens[2]);
+                    //System.out.println(tokens[2]);
+                    count++;  
+                }                
+            } 
+            
+            line = br.readLine();
+            if(line!=null){
+                tokens = line.split(" ");
+            }else tokens[0] = "END";
+            
+        }
+        return out;
     }
 
     public void saveLog(ArrayList<String> queries, ArrayList<String> documents, ArrayList<String> times) throws IOException {
@@ -412,4 +505,19 @@ public class TrecDocRetriever {
             
         return topDocs;     
     }
+
+    private void makeIdToPos() throws IOException {
+        
+        idToPos = new ArrayList<DocumentEdges>();
+            for(int i=0; i<reader.numDocs(); i++){
+                DocumentEdges doc = new DocumentEdges();
+                doc.setDocument(reader.document(i).get(TrecDocIndexer.FIELD_ID)); 
+                doc.setDocumentID(i);                
+                idToPos.add(doc);                
+            }
+            Collections.sort(idToPos);   
+    }
+    
+
+    
 }
